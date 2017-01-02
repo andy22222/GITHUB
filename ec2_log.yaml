@@ -1,0 +1,59 @@
+#1 This file will provising EC2 instance
+#2 It will add ebs volume
+#3 Also enable journalctl log dtoring on local("/var/log/journal" & "/run/log/journal"
+env: "testLog" 
+app_code_user: "ubuntu" 
+aws_region: us-east-1
+instance_type: t2.micro  
+ami: ami-b7a114d7 
+network_interfaces:
+    - name: ENI0
+      device_index: 0
+ebs_optimized: yes
+disposable_ebs_volumes:
+    - device_name: /dev/sda1
+      device_type: standard
+      volume_size: 9
+      delete_on_termination: yes
+    - device_name: /dev/xvdb
+      volume_type: ephemeral
+      ephemeral: ephemeral0
+recoverable_ebs_volumes:
+    - device_name: xvdd
+      device_type: gp2
+      volume_size: 1
+    # logs
+    - device_name: xvdl
+      device_type: gp2
+      volume_size: 1
+lvm_vgs:
+    - name: docker
+      pvs: /dev/xvdd
+    - name: logs
+      pvs: /dev/xvdl
+lvm_lvs:
+    - name: volumes
+      mount_point: /var/lib/docker
+      vg: docker
+      size: "1000m"
+      fs: ext4
+    - name: logs1
+      mount_point: /var/log/journal 
+      vg: logs
+      size: "500m"
+      fs: ext4
+    - name: logs2
+      mount_point: /run/log/journal 
+      vg: logs
+      size: "500m"
+      fs: ext4
+swap:
+    device: /dev/xvdb
+    swappiness: 10
+
+
+tasks:
+    - name: Ensure systemd-journald is up and running
+      template: Storage=persistent dest=/etc/systemd/journald.conf
+      service: name=systemd-journald state=started
+      notify: restart systemd-journald
